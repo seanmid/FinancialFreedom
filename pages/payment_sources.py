@@ -88,21 +88,45 @@ def payment_sources_page():
                                 except Exception as e:
                                     st.error(f"Error deactivating payment source: {str(e)}")
                         else:
-                            if st.button(f"Reactivate", key=f"reactivate_{source_id}"):
-                                try:
-                                    cur.execute(
-                                        """
-                                        UPDATE payment_sources 
-                                        SET is_active = true 
-                                        WHERE id = %s
-                                        """,
-                                        (source_id,)
-                                    )
-                                    conn.commit()
-                                    st.success("Payment source reactivated!")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error reactivating payment source: {str(e)}")
+                            col3a, col3b = st.columns(2)
+                            with col3a:
+                                if st.button(f"Reactivate", key=f"reactivate_{source_id}"):
+                                    try:
+                                        cur.execute(
+                                            """
+                                            UPDATE payment_sources 
+                                            SET is_active = true 
+                                            WHERE id = %s
+                                            """,
+                                            (source_id,)
+                                        )
+                                        conn.commit()
+                                        st.success("Payment source reactivated!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error reactivating payment source: {str(e)}")
+                            with col3b:
+                                if usage_count == 0:
+                                    if st.button("Delete", key=f"delete_{source_id}", type="secondary"):
+                                        if st.button("Confirm Delete", key=f"confirm_delete_{source_id}", type="primary"):
+                                            try:
+                                                cur.execute(
+                                                    """
+                                                    DELETE FROM payment_sources 
+                                                    WHERE id = %s AND 
+                                                          NOT EXISTS (
+                                                              SELECT 1 
+                                                              FROM expenses 
+                                                              WHERE payment_source_id = %s
+                                                          )
+                                                    """,
+                                                    (source_id, source_id)
+                                                )
+                                                conn.commit()
+                                                st.success("Payment source deleted!")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Error deleting payment source: {str(e)}")
 
                     st.write(f"Added: {created_at.strftime('%Y-%m-%d')}")
                     st.write(f"Times used: {usage_count}")

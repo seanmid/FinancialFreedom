@@ -49,3 +49,15 @@ class Category:
     type: str
     is_custom: bool
     id: Optional[int] = None
+
+@dataclass
+class FinancialGoal:
+    name: str
+    target_amount: Decimal
+    current_amount: Decimal
+    deadline: date
+    category_id: Optional[int]
+    priority: str
+    status: str
+    created_at: date
+    id: Optional[int] = None

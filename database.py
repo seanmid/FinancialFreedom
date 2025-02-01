@@ -16,7 +16,6 @@ def init_db():
     cur = conn.cursor()
 
     try:
-        # Create tables if they don't exist
         cur.execute("""
             CREATE TABLE IF NOT EXISTS categories (
                 id SERIAL PRIMARY KEY,
@@ -26,7 +25,6 @@ def init_db():
             )
         """)
 
-        # New table for payment sources
         cur.execute("""
             CREATE TABLE IF NOT EXISTS payment_sources (
                 id SERIAL PRIMARY KEY,
@@ -86,8 +84,21 @@ def init_db():
                 due_date DATE NOT NULL
             )
         """)
+        
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS financial_goals (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(200) NOT NULL,
+                target_amount DECIMAL(10,2) NOT NULL,
+                current_amount DECIMAL(10,2) DEFAULT 0,
+                deadline DATE NOT NULL,
+                category_id INTEGER REFERENCES categories(id),
+                priority VARCHAR(20) NOT NULL,
+                status VARCHAR(20) DEFAULT 'in_progress',
+                created_at DATE DEFAULT CURRENT_DATE
+            )
+        """)
 
-        # Check if categories table is empty before inserting default categories
         cur.execute("SELECT COUNT(*) FROM categories")
         count = cur.fetchone()
         if count is not None and count[0] == 0:
@@ -108,7 +119,6 @@ def init_db():
                 default_categories
             )
 
-        # Check if payment_sources table is empty before inserting example sources
         cur.execute("SELECT COUNT(*) FROM payment_sources")
         count = cur.fetchone()
         if count is not None and count[0] == 0:
