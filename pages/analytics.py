@@ -6,12 +6,16 @@ from database import get_db_connection
 from utils import export_to_csv
 from datetime import datetime, timedelta
 from auth import require_auth
+from components import add_auth_controls
 
 def analytics_page():
     # Ensure user is logged in
     user = require_auth()
 
     st.title("Financial Analytics")
+
+    # Add authentication controls
+    add_auth_controls()
 
     # Date range selection
     col1, col2 = st.columns(2)

@@ -34,27 +34,28 @@ def user_management_page():
                 with col1:
                     st.write(f"Created: {created_at.strftime('%Y-%m-%d')}")
                     st.write(f"Role: {'Administrator' if is_admin else 'User'}")
+                    st.write("---")
 
-                    # Add password update section
-                    with st.expander("Update Password"):
-                        with st.form(key=f"update_password_form_{user_id}"):
-                            new_password = st.text_input("New Password", type="password")
-                            confirm_password = st.text_input("Confirm Password", type="password")
+                    # Password update section (without nesting expanders)
+                    st.subheader("Update Password")
+                    with st.form(key=f"update_password_form_{user_id}"):
+                        new_password = st.text_input("New Password", type="password")
+                        confirm_password = st.text_input("Confirm Password", type="password")
 
-                            if st.form_submit_button("Update Password"):
-                                if new_password != confirm_password:
-                                    st.error("Passwords do not match")
-                                else:
-                                    try:
-                                        password_hash = User.hash_password(new_password)
-                                        cur.execute(
-                                            "UPDATE users SET password_hash = %s WHERE id = %s",
-                                            (password_hash, user_id)
-                                        )
-                                        conn.commit()
-                                        st.success("Password updated successfully!")
-                                    except Exception as e:
-                                        st.error(f"Error updating password: {str(e)}")
+                        if st.form_submit_button("Update Password"):
+                            if new_password != confirm_password:
+                                st.error("Passwords do not match")
+                            else:
+                                try:
+                                    password_hash = User.hash_password(new_password)
+                                    cur.execute(
+                                        "UPDATE users SET password_hash = %s WHERE id = %s",
+                                        (password_hash, user_id)
+                                    )
+                                    conn.commit()
+                                    st.success("Password updated successfully!")
+                                except Exception as e:
+                                    st.error(f"Error updating password: {str(e)}")
 
                 with col2:
                     if user_id != user.id:  # Prevent admin from deleting themselves
