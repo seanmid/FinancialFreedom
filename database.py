@@ -26,6 +26,19 @@ def init_db():
             )
         """)
 
+        # New table for payment sources
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS payment_sources (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                type VARCHAR(20) NOT NULL,  -- 'bank_account' or 'credit_card'
+                last_four VARCHAR(4),
+                bank_name VARCHAR(100),
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS income (
                 id SERIAL PRIMARY KEY,
@@ -44,8 +57,8 @@ def init_db():
                 description VARCHAR(200) NOT NULL,
                 amount DECIMAL(10,2) NOT NULL,
                 category_id INTEGER REFERENCES categories(id),
+                payment_source_id INTEGER REFERENCES payment_sources(id),
                 date DATE NOT NULL,
-                payment_method VARCHAR(50),
                 necessity_level VARCHAR(20),
                 is_recurring BOOLEAN DEFAULT false,
                 frequency VARCHAR(20)
@@ -93,6 +106,24 @@ def init_db():
             cur.executemany(
                 "INSERT INTO categories (name, type, is_custom) VALUES (%s, %s, %s)",
                 default_categories
+            )
+
+        # Check if payment_sources table is empty before inserting example sources
+        cur.execute("SELECT COUNT(*) FROM payment_sources")
+        count = cur.fetchone()
+        if count is not None and count[0] == 0:
+            default_payment_sources = [
+                ('Chase Freedom', 'credit_card', '1234', 'Chase', True),
+                ('Bank of America Checking', 'bank_account', '5678', 'Bank of America', True),
+                ('Wells Fargo Savings', 'bank_account', '9012', 'Wells Fargo', True)
+            ]
+
+            cur.executemany(
+                """
+                INSERT INTO payment_sources (name, type, last_four, bank_name, is_active)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                default_payment_sources
             )
 
         conn.commit()
