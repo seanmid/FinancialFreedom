@@ -1,12 +1,16 @@
 import streamlit as st
 from database import get_db_connection
 from auth import require_auth
+from components import add_auth_controls
 
 def payment_sources_page():
     # Ensure user is logged in
     user = require_auth()
 
     st.title("Payment Sources Management")
+
+    # Add authentication controls
+    add_auth_controls()
 
     tab1, tab2 = st.tabs(["Add Payment Source", "View Payment Sources"])
 
@@ -15,8 +19,12 @@ def payment_sources_page():
             name = st.text_input("Payment Source Name")
             source_type = st.selectbox(
                 "Type",
-                ["credit_card", "bank_account"],
-                format_func=lambda x: "Credit Card" if x == "credit_card" else "Bank Account"
+                ["credit_card", "debit_card", "bank_account"],
+                format_func=lambda x: {
+                    "credit_card": "Credit Card",
+                    "debit_card": "Debit Card",
+                    "bank_account": "Bank Account"
+                }[x]
             )
             bank_name = st.text_input("Bank Name")
             last_four = st.text_input("Last 4 Digits", max_chars=4)

@@ -5,8 +5,12 @@ import pandas as pd
 from database import get_db_connection
 from utils import export_to_csv
 from datetime import datetime, timedelta
+from auth import require_auth
 
 def analytics_page():
+    # Ensure user is logged in
+    user = require_auth()
+
     st.title("Financial Analytics")
 
     # Date range selection
@@ -15,6 +19,12 @@ def analytics_page():
         start_date = st.date_input("Start Date", value=datetime.now() - timedelta(days=30))
     with col2:
         end_date = st.date_input("End Date", value=datetime.now())
+
+    # Add logout button
+    if st.sidebar.button("Logout"):
+        from auth import logout_user
+        logout_user()
+        st.rerun()
 
     # Get data from database
     conn = get_db_connection()
@@ -27,8 +37,9 @@ def analytics_page():
         FROM income i
         JOIN categories c ON i.category_id = c.id
         WHERE i.date BETWEEN %s AND %s
+        AND i.user_id = %s
         """,
-        (start_date, end_date)
+        (start_date, end_date, user.id)
     )
     income_data = cur.fetchall()
 
@@ -42,8 +53,9 @@ def analytics_page():
         JOIN categories c ON e.category_id = c.id
         LEFT JOIN payment_sources ps ON e.payment_source_id = ps.id
         WHERE e.date BETWEEN %s AND %s
+        AND e.user_id = %s
         """,
-        (start_date, end_date)
+        (start_date, end_date, user.id)
     )
     expense_data = cur.fetchall()
 
@@ -54,8 +66,8 @@ def analytics_page():
                                                    'source_type', 'bank_name'])
 
     # Summary metrics
-    total_income = income_df['amount'].sum()
-    total_expenses = expense_df['amount'].sum()
+    total_income = income_df['amount'].sum() if not income_df.empty else 0
+    total_expenses = expense_df['amount'].sum() if not expense_df.empty else 0
     savings_rate = ((total_income - total_expenses) / total_income * 100) if total_income > 0 else 0
 
     # Display metrics
@@ -71,89 +83,102 @@ def analytics_page():
     tab1, tab2, tab3, tab4 = st.tabs(["Income Analysis", "Expense Analysis", "Payment Sources", "Trends"])
 
     with tab1:
-        # Income by category
-        income_by_category = income_df.groupby('category')['amount'].sum().reset_index()
-        fig = px.pie(
-            income_by_category,
-            values='amount',
-            names='category',
-            title="Income Distribution by Category"
-        )
-        st.plotly_chart(fig)
+        if not income_df.empty:
+            # Income by category
+            income_by_category = income_df.groupby('category')['amount'].sum().reset_index()
+            fig = px.pie(
+                income_by_category,
+                values='amount',
+                names='category',
+                title="Income Distribution by Category"
+            )
+            st.plotly_chart(fig)
 
-        # Income over time
-        income_by_date = income_df.groupby('date')['amount'].sum().reset_index()
-        fig = px.line(
-            income_by_date,
-            x='date',
-            y='amount',
-            title="Income Trend"
-        )
-        st.plotly_chart(fig)
+            # Income over time
+            income_by_date = income_df.groupby('date')['amount'].sum().reset_index()
+            fig = px.line(
+                income_by_date,
+                x='date',
+                y='amount',
+                title="Income Trend"
+            )
+            st.plotly_chart(fig)
+        else:
+            st.info("No income data available for the selected period")
 
     with tab2:
-        # Expenses by category
-        expense_by_category = expense_df.groupby('category')['amount'].sum().reset_index()
-        fig = px.pie(
-            expense_by_category,
-            values='amount',
-            names='category',
-            title="Expense Distribution by Category"
-        )
-        st.plotly_chart(fig)
+        if not expense_df.empty:
+            # Expenses by category
+            expense_by_category = expense_df.groupby('category')['amount'].sum().reset_index()
+            fig = px.pie(
+                expense_by_category,
+                values='amount',
+                names='category',
+                title="Expense Distribution by Category"
+            )
+            st.plotly_chart(fig)
 
-        # Expenses by necessity level
-        expense_by_necessity = expense_df.groupby('necessity_level')['amount'].sum().reset_index()
-        fig = px.bar(
-            expense_by_necessity,
-            x='necessity_level',
-            y='amount',
-            title="Expenses by Necessity Level"
-        )
-        st.plotly_chart(fig)
+            # Expenses by necessity level
+            expense_by_necessity = expense_df.groupby('necessity_level')['amount'].sum().reset_index()
+            fig = px.bar(
+                expense_by_necessity,
+                x='necessity_level',
+                y='amount',
+                title="Expenses by Necessity Level"
+            )
+            st.plotly_chart(fig)
+        else:
+            st.info("No expense data available for the selected period")
 
     with tab3:
-        # Expenses by payment source
-        st.subheader("Payment Source Analysis")
+        if not expense_df.empty:
+            # Expenses by payment source
+            st.subheader("Payment Source Analysis")
 
-        # By payment source
-        expense_by_source = expense_df.groupby(['payment_source', 'bank_name'])['amount'].sum().reset_index()
-        fig = px.bar(
-            expense_by_source,
-            x='payment_source',
-            y='amount',
-            color='bank_name',
-            title="Expenses by Payment Source"
-        )
-        st.plotly_chart(fig)
+            # By payment source
+            expense_by_source = expense_df.groupby(['payment_source', 'bank_name'])['amount'].sum().reset_index()
+            fig = px.bar(
+                expense_by_source,
+                x='payment_source',
+                y='amount',
+                color='bank_name',
+                title="Expenses by Payment Source"
+            )
+            st.plotly_chart(fig)
 
-        # By source type
-        expense_by_source_type = expense_df.groupby('source_type')['amount'].sum().reset_index()
-        fig = px.pie(
-            expense_by_source_type,
-            values='amount',
-            names='source_type',
-            title="Credit Card vs Bank Account Usage"
-        )
-        st.plotly_chart(fig)
+            # By source type
+            expense_by_source_type = expense_df.groupby('source_type')['amount'].sum().reset_index()
+            fig = px.pie(
+                expense_by_source_type,
+                values='amount',
+                names='source_type',
+                title="Payment Method Distribution"
+            )
+            st.plotly_chart(fig)
+        else:
+            st.info("No expense data available for the selected period")
 
     with tab4:
-        # Combined income vs expenses trend
-        income_trend = income_df.groupby('date')['amount'].sum().reset_index()
-        income_trend['type'] = 'Income'
-        expense_trend = expense_df.groupby('date')['amount'].sum().reset_index()
-        expense_trend['type'] = 'Expense'
+        if not income_df.empty or not expense_df.empty:
+            # Combined income vs expenses trend
+            income_trend = income_df.groupby('date')['amount'].sum().reset_index() if not income_df.empty else pd.DataFrame({'date': [], 'amount': []})
+            income_trend['type'] = 'Income'
+            expense_trend = expense_df.groupby('date')['amount'].sum().reset_index() if not expense_df.empty else pd.DataFrame({'date': [], 'amount': []})
+            expense_trend['type'] = 'Expense'
 
-        combined_trend = pd.concat([income_trend, expense_trend])
+            combined_trend = pd.concat([income_trend, expense_trend])
 
-        fig = px.line(
-            combined_trend,
-            x='date',
-            y='amount',
-            color='type',
-            title="Income vs Expenses Over Time"
-        )
-        st.plotly_chart(fig)
+            if not combined_trend.empty:
+                fig = px.line(
+                    combined_trend,
+                    x='date',
+                    y='amount',
+                    color='type',
+                    title="Income vs Expenses Over Time"
+                )
+                st.plotly_chart(fig)
+        else:
+            st.info("No data available for the selected period")
 
     # Export options
     st.subheader("Export Data")
@@ -161,7 +186,7 @@ def analytics_page():
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("Export Income Data"):
+        if not income_df.empty and st.button("Export Income Data"):
             csv = export_to_csv(income_df, "income_data.csv")
             st.download_button(
                 label="Download Income CSV",
@@ -171,7 +196,7 @@ def analytics_page():
             )
 
     with col2:
-        if st.button("Export Expense Data"):
+        if not expense_df.empty and st.button("Export Expense Data"):
             csv = export_to_csv(expense_df, "expense_data.csv")
             st.download_button(
                 label="Download Expense CSV",
