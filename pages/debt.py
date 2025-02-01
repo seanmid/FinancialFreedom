@@ -160,14 +160,58 @@ def debt_page():
     with tab3:
         st.subheader("Debt Payoff Calculator")
 
-        col1, col2 = st.columns(2)
+        # Option to select existing debt or enter custom values
+        use_existing = st.checkbox("Use existing debt")
 
-        with col1:
-            principal = st.number_input("Debt Amount", min_value=0.01, step=100.0)
-            interest_rate = st.number_input("Annual Interest Rate (%)", min_value=0.01, step=0.1)
+        if use_existing:
+            # Get existing debts for selection
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT id, name, current_balance, interest_rate, minimum_payment
+                FROM debts
+                WHERE user_id = %s
+                ORDER BY name
+                """,
+                (user.id,)
+            )
+            existing_debts = cur.fetchall()
+            cur.close()
+            conn.close()
 
-        with col2:
-            monthly_payment = st.number_input("Monthly Payment", min_value=0.01, step=50.0)
+            if existing_debts:
+                debt_options = {f"{debt[1]} (${float(debt[2]):,.2f})": debt for debt in existing_debts}
+                selected_debt_name = st.selectbox(
+                    "Select Debt",
+                    options=list(debt_options.keys())
+                )
+                selected_debt = debt_options[selected_debt_name]
+
+                principal = float(selected_debt[2])  # current_balance
+                interest_rate = float(selected_debt[3])
+                monthly_payment = float(selected_debt[4])
+
+                # Allow overriding monthly payment
+                monthly_payment = st.number_input(
+                    "Monthly Payment",
+                    min_value=float(selected_debt[4]),
+                    value=float(selected_debt[4]),
+                    step=50.0
+                )
+            else:
+                st.info("No existing debts found")
+                use_existing = False
+
+        if not use_existing:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                principal = st.number_input("Debt Amount", min_value=0.01, step=100.0)
+                interest_rate = st.number_input("Annual Interest Rate (%)", min_value=0.01, step=0.1)
+
+            with col2:
+                monthly_payment = st.number_input("Monthly Payment", min_value=0.01, step=50.0)
 
         if st.button("Calculate Payoff Plan"):
             payoff_results = calculate_debt_payoff(principal, interest_rate, monthly_payment)

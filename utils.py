@@ -52,22 +52,22 @@ def get_category_name(category_id: int) -> str:
     conn.close()
     return result[0] if result else "Unknown"
 
-def calculate_budget_progress(category_id: int, period: str) -> dict:
+def calculate_budget_progress(category_id: int, period: str, user_id: int) -> dict:
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     # Get budget amount
     cur.execute(
-        "SELECT amount FROM budgets WHERE category_id = %s AND period = %s",
-        (category_id, period)
+        "SELECT amount FROM budgets WHERE category_id = %s AND period = %s AND user_id = %s",
+        (category_id, period, user_id)
     )
     budget = cur.fetchone()
-    
+
     if not budget:
         return {'progress': 0, 'remaining': 0}
-    
+
     budget_amount = float(budget[0])
-    
+
     # Calculate period dates
     today = datetime.now()
     if period == 'monthly':
@@ -76,22 +76,23 @@ def calculate_budget_progress(category_id: int, period: str) -> dict:
     else:  # weekly
         start_date = today - timedelta(days=today.weekday())
         end_date = start_date + timedelta(days=6)
-    
-    # Get spent amount
+
+    # Get spent amount for the specific user
     cur.execute(
         """
         SELECT COALESCE(SUM(amount), 0) 
         FROM expenses 
         WHERE category_id = %s 
         AND date BETWEEN %s AND %s
+        AND user_id = %s
         """,
-        (category_id, start_date, end_date)
+        (category_id, start_date, end_date, user_id)
     )
     spent = float(cur.fetchone()[0])
-    
+
     cur.close()
     conn.close()
-    
+
     return {
         'progress': (spent / budget_amount) * 100,
         'remaining': budget_amount - spent

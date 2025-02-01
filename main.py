@@ -90,21 +90,23 @@ def show_dashboard():
 
         # Calculate total income
         cur.execute("""
-            SELECT COALESCE(SUM(amount), 0) as total_income 
+            SELECT SUM(CASE WHEN amount IS NULL THEN 0 ELSE amount END) as total_income 
             FROM income 
             WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', CURRENT_DATE)
             AND user_id = %s
         """, (user.id,))
-        total_income = float(cur.fetchone()['total_income'])
+        result = cur.fetchone()
+        total_income = float(result['total_income'] if result['total_income'] is not None else 0)
 
         # Calculate total expenses
         cur.execute("""
-            SELECT COALESCE(SUM(amount), 0) as total_expenses 
+            SELECT SUM(CASE WHEN amount IS NULL THEN 0 ELSE amount END) as total_expenses 
             FROM expenses 
             WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', CURRENT_DATE)
             AND user_id = %s
         """, (user.id,))
-        total_expenses = float(cur.fetchone()['total_expenses'])
+        result = cur.fetchone()
+        total_expenses = float(result['total_expenses'] if result['total_expenses'] is not None else 0)
 
         # Display metrics
         st.metric("Monthly Income", f"${total_income:,.2f}")
