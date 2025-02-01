@@ -84,7 +84,7 @@ def payment_sources_page():
                                     )
                                     conn.commit()
                                     st.success("Payment source deactivated!")
-                                    st.experimental_rerun()
+                                    st.rerun()
                                 except Exception as e:
                                     st.error(f"Error deactivating payment source: {str(e)}")
                         else:
@@ -100,7 +100,7 @@ def payment_sources_page():
                                     )
                                     conn.commit()
                                     st.success("Payment source reactivated!")
-                                    st.experimental_rerun()
+                                    st.rerun()
                                 except Exception as e:
                                     st.error(f"Error reactivating payment source: {str(e)}")
 
