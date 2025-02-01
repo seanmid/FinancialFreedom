@@ -12,8 +12,20 @@ init_db()
 st.set_page_config(
     page_title="Budget Tracker",
     page_icon="💰",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# Add navigation menu
+st.sidebar.title("Navigation")
+pages = {
+    "Dashboard": "main",
+    "Income & Expenses": "income_expenses",
+    "Budget": "budget",
+    "Analytics": "analytics",
+    "Debt": "debt",
+    "Payment Sources": "payment_sources"
+}
 
 # Main dashboard
 def main():
