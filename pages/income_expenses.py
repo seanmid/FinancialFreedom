@@ -3,8 +3,12 @@ from database import get_db_connection
 from datetime import datetime
 from decimal import Decimal
 import pandas as pd
+from auth import require_auth
 
 def income_expenses_page():
+    # Ensure user is logged in
+    user = require_auth()
+
     st.title("Income & Expenses Management")
 
     tab1, tab2 = st.tabs(["Add Transaction", "View Transactions"])
@@ -22,12 +26,17 @@ def income_expenses_page():
             amount = st.number_input("Amount", min_value=0.01, step=0.01)
             date = st.date_input("Date")
 
-            # Get categories based on transaction type
+            # Get categories based on transaction type and user
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute(
-                "SELECT id, name FROM categories WHERE type = %s",
-                (transaction_type.lower(),)
+                """
+                SELECT id, name 
+                FROM categories 
+                WHERE type = %s 
+                AND (user_id IS NULL OR user_id = %s)
+                """,
+                (transaction_type.lower(), user.id)
             )
             categories = cur.fetchall()
             category_options = {cat[1]: cat[0] for cat in categories}
@@ -53,18 +62,23 @@ def income_expenses_page():
                     SELECT id, name, type, bank_name, last_four 
                     FROM payment_sources 
                     WHERE is_active = true
+                    AND user_id = %s
                     ORDER BY name
-                """)
+                """, (user.id,))
                 payment_sources = cur.fetchall()
                 payment_source_options = {
                     f"{src[1]} ({src[2].replace('_', ' ').title()} - {src[3]} *{src[4]})": src[0] 
                     for src in payment_sources
                 }
 
-                payment_source = st.selectbox(
-                    "Payment Source",
-                    options=list(payment_source_options.keys())
-                )
+                if payment_sources:
+                    payment_source = st.selectbox(
+                        "Payment Source",
+                        options=list(payment_source_options.keys())
+                    )
+                else:
+                    st.warning("Please add a payment source first")
+                    st.stop()
 
                 necessity_level = st.selectbox(
                     "Necessity Level",
@@ -81,23 +95,24 @@ def income_expenses_page():
                         cur.execute(
                             """
                             INSERT INTO income 
-                            (description, amount, frequency, category_id, date, is_recurring)
-                            VALUES (%s, %s, %s, %s, %s, %s)
+                            (description, amount, frequency, category_id, date, 
+                             is_recurring, user_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
                             """,
                             (description, amount, frequency, category_options[category],
-                             date, is_recurring)
+                             date, is_recurring, user.id)
                         )
                     else:
                         cur.execute(
                             """
                             INSERT INTO expenses 
                             (description, amount, category_id, payment_source_id, date,
-                             necessity_level, is_recurring, frequency)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                             necessity_level, is_recurring, frequency, user_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """,
                             (description, amount, category_options[category],
                              payment_source_options[payment_source], date,
-                             necessity_level, is_recurring, frequency)
+                             necessity_level, is_recurring, frequency, user.id)
                         )
 
                     conn.commit()
@@ -125,8 +140,10 @@ def income_expenses_page():
                        i.date, i.frequency, i.is_recurring
                 FROM income i
                 JOIN categories c ON i.category_id = c.id
+                WHERE i.user_id = %s
                 ORDER BY date DESC
-                """
+                """,
+                (user.id,)
             )
             columns = ['ID', 'Description', 'Amount', 'Category', 'Date', 
                       'Frequency', 'Is Recurring']
@@ -139,8 +156,10 @@ def income_expenses_page():
                 FROM expenses e
                 JOIN categories c ON e.category_id = c.id
                 LEFT JOIN payment_sources ps ON e.payment_source_id = ps.id
+                WHERE e.user_id = %s
                 ORDER BY date DESC
-                """
+                """,
+                (user.id,)
             )
             columns = ['ID', 'Description', 'Amount', 'Category', 
                       'Source Name', 'Bank Name', 'Last Four',
@@ -183,7 +202,10 @@ def income_expenses_page():
                             if st.button("✓ Confirm", key=f"confirm_{row['ID']}"):
                                 try:
                                     table = "income" if view_type == "Income" else "expenses"
-                                    cur.execute(f"DELETE FROM {table} WHERE id = %s", (row['ID'],))
+                                    cur.execute(
+                                        f"DELETE FROM {table} WHERE id = %s AND user_id = %s", 
+                                        (row['ID'], user.id)
+                                    )
                                     conn.commit()
                                     st.success(f"{view_type} entry deleted!")
                                     st.session_state.delete_id = None
