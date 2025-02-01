@@ -18,7 +18,7 @@ def debt_page():
             name = st.text_input("Debt Name")
             total_amount = st.number_input("Total Amount", min_value=0.01, step=0.01)
             current_balance = st.number_input("Current Balance", min_value=0.01, step=0.01)
-            interest_rate = st.number_input("Interest Rate (%)", min_value=0.01, step=0.01)
+            interest_rate = st.number_input("Interest Rate (%)", min_value=0.01, step=0.1)
             minimum_payment = st.number_input("Minimum Payment", min_value=0.01, step=0.01)
             due_date = st.date_input("Due Date")
 
@@ -77,16 +77,80 @@ def debt_page():
             )
             st.plotly_chart(fig)
 
-            # List all debts
+            # List all debts with edit and delete options
             for debt in debts:
+                debt_id = debt[0]
                 with st.expander(f"{debt[1]} - ${float(debt[3]):,.2f}"):
-                    col1, col2 = st.columns(2)
+                    col1, col2, col3 = st.columns([2, 2, 1])
+
                     with col1:
                         st.write(f"Total Amount: ${float(debt[2]):,.2f}")
                         st.write(f"Interest Rate: {float(debt[4])}%")
                     with col2:
                         st.write(f"Minimum Payment: ${float(debt[5]):,.2f}")
                         st.write(f"Due Date: {debt[6]}")
+                    with col3:
+                        # Edit button
+                        if st.button("✏️ Edit", key=f"edit_{debt_id}"):
+                            st.session_state[f'editing_debt_{debt_id}'] = True
+
+                        # Delete button
+                        if st.button("🗑️ Delete", key=f"delete_{debt_id}"):
+                            st.session_state[f'confirm_delete_debt_{debt_id}'] = True
+
+                    # Edit form
+                    if st.session_state.get(f'editing_debt_{debt_id}', False):
+                        with st.form(key=f"edit_debt_form_{debt_id}"):
+                            new_name = st.text_input("Name", value=debt[1])
+                            new_total = st.number_input("Total Amount", value=float(debt[2]), min_value=0.01)
+                            new_balance = st.number_input("Current Balance", value=float(debt[3]), min_value=0.01)
+                            new_rate = st.number_input("Interest Rate (%)", value=float(debt[4]), min_value=0.01)
+                            new_payment = st.number_input("Minimum Payment", value=float(debt[5]), min_value=0.01)
+                            new_due_date = st.date_input("Due Date", value=debt[6])
+
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.form_submit_button("Save Changes"):
+                                    try:
+                                        cur.execute("""
+                                            UPDATE debts 
+                                            SET name = %s, total_amount = %s, current_balance = %s,
+                                                interest_rate = %s, minimum_payment = %s, due_date = %s
+                                            WHERE id = %s AND user_id = %s
+                                        """, (new_name, new_total, new_balance, new_rate, 
+                                              new_payment, new_due_date, debt_id, user.id))
+                                        conn.commit()
+                                        st.success("Debt updated successfully!")
+                                        st.session_state[f'editing_debt_{debt_id}'] = False
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error updating debt: {str(e)}")
+                            with col2:
+                                if st.form_submit_button("Cancel"):
+                                    st.session_state[f'editing_debt_{debt_id}'] = False
+                                    st.rerun()
+
+                    # Delete confirmation
+                    if st.session_state.get(f'confirm_delete_debt_{debt_id}', False):
+                        st.warning("Are you sure you want to delete this debt?")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("✓ Yes", key=f"confirm_yes_{debt_id}"):
+                                try:
+                                    cur.execute(
+                                        "DELETE FROM debts WHERE id = %s AND user_id = %s",
+                                        (debt_id, user.id)
+                                    )
+                                    conn.commit()
+                                    st.success("Debt deleted successfully!")
+                                    st.session_state[f'confirm_delete_debt_{debt_id}'] = False
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error deleting debt: {str(e)}")
+                        with col2:
+                            if st.button("✗ No", key=f"confirm_no_{debt_id}"):
+                                st.session_state[f'confirm_delete_debt_{debt_id}'] = False
+                                st.rerun()
         else:
             st.info("No debts recorded")
 
