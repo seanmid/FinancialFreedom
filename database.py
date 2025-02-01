@@ -2,15 +2,31 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import bcrypt
+from urllib.parse import urlparse
 
 def get_db_connection():
-    return psycopg2.connect(
-        host=os.environ['PGHOST'],
-        database=os.environ['PGDATABASE'],
-        user=os.environ['PGUSER'],
-        password=os.environ['PGPASSWORD'],
-        port=os.environ['PGPORT']
-    )
+    # Try to get DATABASE_URL first (for Streamlit.io deployment)
+    database_url = os.environ.get('DATABASE_URL')
+
+    if database_url:
+        # Parse the URL
+        parsed = urlparse(database_url)
+        return psycopg2.connect(
+            host=parsed.hostname,
+            database=parsed.path[1:],  # Remove leading slash
+            user=parsed.username,
+            password=parsed.password,
+            port=parsed.port or 5432
+        )
+    else:
+        # Fallback to individual credentials (for local development)
+        return psycopg2.connect(
+            host=os.environ['PGHOST'],
+            database=os.environ['PGDATABASE'],
+            user=os.environ['PGUSER'],
+            password=os.environ['PGPASSWORD'],
+            port=os.environ['PGPORT']
+        )
 
 def init_db():
     conn = get_db_connection()
@@ -75,6 +91,8 @@ def init_db():
                 "INSERT INTO users (username, password_hash, is_admin) VALUES (%s, %s, true)",
                 ("admin", password_hash.decode('utf-8'))
             )
+
+        # Add default categories if none exist
         cur.execute("SELECT COUNT(*) FROM categories")
         count = cur.fetchone()
         if count is not None and count[0] == 0:
@@ -93,23 +111,6 @@ def init_db():
             cur.executemany(
                 "INSERT INTO categories (name, type, is_custom) VALUES (%s, %s, %s)",
                 default_categories
-            )
-
-        cur.execute("SELECT COUNT(*) FROM payment_sources")
-        count = cur.fetchone()
-        if count is not None and count[0] == 0:
-            default_payment_sources = [
-                ('Chase Freedom', 'credit_card', '1234', 'Chase', True),
-                ('Bank of America Checking', 'bank_account', '5678', 'Bank of America', True),
-                ('Wells Fargo Savings', 'bank_account', '9012', 'Wells Fargo', True)
-            ]
-
-            cur.executemany(
-                """
-                INSERT INTO payment_sources (name, type, last_four, bank_name, is_active)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                default_payment_sources
             )
 
         conn.commit()
