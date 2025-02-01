@@ -109,7 +109,6 @@ def income_expenses_page():
                     conn.close()
 
     with tab2:
-        # View transactions
         view_type = st.radio(
             "View",
             ["Income", "Expenses"],
@@ -135,7 +134,7 @@ def income_expenses_page():
             cur.execute(
                 """
                 SELECT e.id, e.description, e.amount, c.name as category,
-                       ps.name as source_name, ps.bank_name, ps.last_four,
+                       ps.name, ps.bank_name, ps.last_four,
                        e.date, e.necessity_level, e.is_recurring, e.frequency
                 FROM expenses e
                 JOIN categories c ON e.category_id = c.id
@@ -143,28 +142,31 @@ def income_expenses_page():
                 ORDER BY date DESC
                 """
             )
-            columns = ['ID', 'Description', 'Amount', 'Category', 'Payment Source',
+            columns = ['ID', 'Description', 'Amount', 'Category', 
+                      'Source Name', 'Bank Name', 'Last Four',
                       'Date', 'Necessity Level', 'Is Recurring', 'Frequency']
 
         transactions = cur.fetchall()
 
         if transactions:
-            df = pd.DataFrame(transactions)
+            # Create DataFrame with named columns immediately
+            df = pd.DataFrame(transactions, columns=columns)
 
             if view_type == "Expenses":
-                # Format payment source display
+                # Format payment source display using proper column names
                 df['Payment Source'] = df.apply(
-                    lambda x: f"{x['source_name']} ({x['bank_name']} *{x['last_four']})"
-                    if pd.notna(x['source_name']) else "N/A",
+                    lambda x: f"{x['Source Name']} ({x['Bank Name']} *{x['Last Four']})"
+                    if pd.notna(x['Source Name']) else "N/A",
                     axis=1
                 )
-                # Reorder columns for display
-                display_df = df[[0, 1, 2, 3, 'Payment Source', 7, 8, 9, 10]]
+
+                # Select and reorder columns for display
+                display_columns = ['ID', 'Description', 'Amount', 'Category', 
+                                 'Payment Source', 'Date', 'Necessity Level', 
+                                 'Is Recurring', 'Frequency']
+                display_df = df[display_columns]
             else:
                 display_df = df
-
-            # Rename columns for display
-            display_df.columns = columns
 
             # Add delete buttons
             for idx, row in display_df.iterrows():
