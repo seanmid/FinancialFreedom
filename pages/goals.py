@@ -127,7 +127,7 @@ def goals_page():
                     elif progress >= 75:
                         progress_color = "warning"
 
-                    st.progress(min(progress / 100, 1.0), text=f"{progress:.1f}%")
+                    st.progress(min(float(progress) / 100, 1.0), text=f"{float(progress):.1f}%")
 
                     # Update current amount
                     new_amount = st.number_input(
