@@ -4,12 +4,16 @@ from database import get_db_connection
 from utils import calculate_debt_payoff
 from datetime import datetime
 from auth import require_auth
+from components import add_auth_controls
 
 def debt_page():
     # Ensure user is logged in
     user = require_auth()
 
     st.title("Debt Management")
+
+    # Add authentication controls
+    add_auth_controls()
 
     tab1, tab2, tab3 = st.tabs(["Add Debt", "Debt Overview", "Payoff Calculator"])
 

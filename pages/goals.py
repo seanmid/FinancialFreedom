@@ -4,15 +4,16 @@ from database import get_db_connection
 from datetime import datetime, date
 from decimal import Decimal
 from auth import require_auth
-
-def calculate_goal_progress(current_amount: Decimal, target_amount: Decimal) -> float:
-    return (float(current_amount) / float(target_amount)) * 100 if target_amount > 0 else 0
+from components import add_auth_controls
 
 def goals_page():
     # Ensure user is logged in
     user = require_auth()
 
     st.title("Financial Goals")
+
+    # Add authentication controls
+    add_auth_controls()
 
     tab1, tab2 = st.tabs(["Set Goals", "Track Progress"])
 

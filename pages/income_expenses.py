@@ -4,12 +4,16 @@ from datetime import datetime
 from decimal import Decimal
 import pandas as pd
 from auth import require_auth
+from components import add_auth_controls
 
 def income_expenses_page():
     # Ensure user is logged in
     user = require_auth()
 
     st.title("Income & Expenses Management")
+
+    # Add authentication controls
+    add_auth_controls()
 
     tab1, tab2 = st.tabs(["Add Transaction", "View Transactions"])
 

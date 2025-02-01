@@ -4,12 +4,16 @@ from database import get_db_connection
 from utils import calculate_budget_progress
 from datetime import datetime
 from auth import require_auth
+from components import add_auth_controls
 
 def budget_page():
     # Ensure user is logged in
     user = require_auth()
 
     st.title("Budget Management")
+
+    # Add authentication controls
+    add_auth_controls()
 
     tab1, tab2 = st.tabs(["Budget Setup", "Budget Overview"])
 

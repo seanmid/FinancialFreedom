@@ -64,7 +64,8 @@ def show_dashboard():
         "Budget": "budget",
         "Analytics": "analytics",
         "Debt": "debt",
-        "Payment Sources": "payment_sources"
+        "Payment Sources": "payment_sources",
+        "Goals": "goals"
     }
 
     if user.is_admin:
