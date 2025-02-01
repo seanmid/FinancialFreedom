@@ -5,6 +5,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from auth import require_auth
 from components import add_auth_controls
+from utils import calculate_goal_progress
 
 def goals_page():
     # Ensure user is logged in
