@@ -9,6 +9,8 @@ from components import add_auth_controls
 def income_expenses_page():
     # Ensure user is logged in
     user = require_auth()
+    if not user:
+        st.stop()  # Stop execution if user is not logged in
 
     st.title("Income & Expenses Management")
 

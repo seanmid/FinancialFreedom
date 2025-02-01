@@ -71,8 +71,8 @@ def show_dashboard():
     if user.is_admin:
         pages["User Management"] = "user_management"
 
-    # Add logout button
-    if st.sidebar.button("Logout"):
+    # Add logout button with a unique key
+    if st.sidebar.button("Logout", key="main_logout"):
         logout_user()
         st.rerun()
 

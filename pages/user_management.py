@@ -7,6 +7,8 @@ from components import add_auth_controls
 def user_management_page():
     # Ensure only admin can access this page
     user = require_admin()
+    if not user:
+        st.stop()  # Stop execution if user is not logged in or not admin
 
     st.title("User Management")
 

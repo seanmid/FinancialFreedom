@@ -9,6 +9,8 @@ from components import add_auth_controls
 def goals_page():
     # Ensure user is logged in
     user = require_auth()
+    if not user:
+        st.stop()  # Stop execution if user is not logged in
 
     st.title("Financial Goals")
 
