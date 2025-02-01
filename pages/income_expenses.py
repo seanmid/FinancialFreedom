@@ -172,16 +172,40 @@ def income_expenses_page():
             for idx, row in display_df.iterrows():
                 with st.expander(f"{row['Description']} - ${float(row['Amount']):,.2f}"):
                     st.write(display_df.iloc[idx])
-                    if st.button("Delete", key=f"delete_{view_type.lower()}_{row['ID']}", type="secondary"):
-                        if st.button("Confirm Delete", key=f"confirm_delete_{view_type.lower()}_{row['ID']}", type="primary"):
-                            try:
-                                table = "income" if view_type == "Income" else "expenses"
-                                cur.execute(f"DELETE FROM {table} WHERE id = %s", (row['ID'],))
-                                conn.commit()
-                                st.success(f"{view_type} entry deleted!")
+
+                    # Store delete state in session state
+                    delete_key = f"delete_{view_type.lower()}_{row['ID']}"
+                    confirm_key = f"confirm_{delete_key}"
+
+                    if delete_key not in st.session_state:
+                        st.session_state[delete_key] = False
+
+                    # Show delete button first
+                    if not st.session_state[delete_key]:
+                        if st.button("Delete", key=delete_key, type="secondary"):
+                            st.session_state[delete_key] = True
+                            st.rerun()
+                    # Show confirm button after delete is clicked
+                    else:
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("Confirm Delete", key=confirm_key, type="primary"):
+                                try:
+                                    table = "income" if view_type == "Income" else "expenses"
+                                    cur.execute(f"DELETE FROM {table} WHERE id = %s", (row['ID'],))
+                                    conn.commit()
+                                    st.success(f"{view_type} entry deleted!")
+                                    # Reset the delete state
+                                    st.session_state[delete_key] = False
+                                    # Force page refresh
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error deleting entry: {str(e)}")
+                        with col2:
+                            if st.button("Cancel", key=f"cancel_{delete_key}", type="secondary"):
+                                st.session_state[delete_key] = False
                                 st.rerun()
-                            except Exception as e:
-                                st.error(f"Error deleting entry: {str(e)}")
+
 
         else:
             st.info(f"No {view_type.lower()} transactions found")
