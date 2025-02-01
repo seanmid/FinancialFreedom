@@ -3,6 +3,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from database import get_db_connection
+from decimal import Decimal
 
 def calculate_monthly_savings(income_total: float, expense_total: float) -> float:
     return income_total - expense_total
@@ -43,10 +44,10 @@ def calculate_debt_payoff(principal: float, interest_rate: float, monthly_paymen
 def export_to_csv(data: pd.DataFrame, filename: str):
     return data.to_csv(index=False).encode('utf-8')
 
-def calculate_goal_progress(current_amount: float, target_amount: float) -> float:
+def calculate_goal_progress(current_amount: Decimal, target_amount: Decimal) -> float:
     if target_amount == 0:
-        return 0
-    return min((current_amount / target_amount) * 100, 100)
+        return 0.0
+    return float(min((current_amount / target_amount) * 100, 100))
 
 def get_category_name(category_id: int) -> str:
     conn = get_db_connection()
