@@ -43,6 +43,11 @@ def calculate_debt_payoff(principal: float, interest_rate: float, monthly_paymen
 def export_to_csv(data: pd.DataFrame, filename: str):
     return data.to_csv(index=False).encode('utf-8')
 
+def calculate_goal_progress(current_amount: float, target_amount: float) -> float:
+    if target_amount == 0:
+        return 0
+    return min((current_amount / target_amount) * 100, 100)
+
 def get_category_name(category_id: int) -> str:
     conn = get_db_connection()
     cur = conn.cursor()
