@@ -33,6 +33,7 @@ def show_login_page():
 
             if submitted:
                 if login_user(username, password):
+                    st.session_state.show_tutorial = True  # Set flag for tutorial
                     st.success("Logged in successfully!")
                     st.rerun()
                 else:
@@ -53,28 +54,82 @@ def show_login_page():
                 else:
                     st.error("Username already exists or registration failed")
 
+def show_tutorial():
+    """Show onboarding tutorial for new users"""
+    if 'tutorial_step' not in st.session_state:
+        st.session_state.tutorial_step = 0
+
+    tutorial_steps = [
+        {
+            "title": "Welcome to Budget Tracker!",
+            "content": "This tutorial will guide you through the main features of the application."
+        },
+        {
+            "title": "Dashboard Overview",
+            "content": "The dashboard shows your financial summary, including income, expenses, and savings."
+        },
+        {
+            "title": "Income & Expenses",
+            "content": "Track your income and expenses by categories. You can add, view, and manage all your transactions."
+        },
+        {
+            "title": "Budgeting",
+            "content": "Set budgets for different categories and track your spending against these budgets."
+        },
+        {
+            "title": "Analytics",
+            "content": "View detailed analytics of your spending patterns and financial trends."
+        }
+    ]
+
+    current_step = tutorial_steps[st.session_state.tutorial_step]
+
+    with st.sidebar:
+        st.info(f"**{current_step['title']}**\n\n{current_step['content']}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.session_state.tutorial_step > 0:
+                if st.button("Previous"):
+                    st.session_state.tutorial_step -= 1
+                    st.rerun()
+        with col2:
+            if st.session_state.tutorial_step < len(tutorial_steps) - 1:
+                if st.button("Next"):
+                    st.session_state.tutorial_step += 1
+                    st.rerun()
+            else:
+                if st.button("Finish"):
+                    st.session_state.show_tutorial = False
+                    st.rerun()
+
 def show_dashboard():
     user = require_auth()
 
-    # Add navigation menu
-    st.sidebar.title("Navigation")
-    pages = {
-        "Dashboard": "main",
-        "Income & Expenses": "income_expenses",
-        "Budget": "budget",
-        "Analytics": "analytics",
-        "Debt": "debt",
-        "Payment Sources": "payment_sources",
-        "Goals": "goals"
-    }
+    # Add navigation menu only if user is logged in
+    if user:
+        st.sidebar.title("Navigation")
+        pages = {
+            "Dashboard": "main",
+            "Income & Expenses": "income_expenses",
+            "Budget": "budget",
+            "Analytics": "analytics",
+            "Debt": "debt",
+            "Payment Sources": "payment_sources",
+            "Goals": "goals"
+        }
 
-    if user.is_admin:
-        pages["User Management"] = "user_management"
+        if user.is_admin:
+            pages["User Management"] = "user_management"
 
-    # Add logout button with a unique key
-    if st.sidebar.button("Logout", key="main_logout"):
-        logout_user()
-        st.rerun()
+        # Add logout button with a unique key
+        if st.sidebar.button("Logout", key="main_logout"):
+            logout_user()
+            st.rerun()
+
+        # Show tutorial if it's enabled
+        if st.session_state.get('show_tutorial', False):
+            show_tutorial()
 
     st.title("💰 Financial Dashboard")
     st.write(f"Welcome back, {user.username}!")
@@ -89,7 +144,7 @@ def show_dashboard():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Calculate total income
+        # Calculate total income for the current user
         cur.execute("""
             SELECT SUM(CASE WHEN amount IS NULL THEN 0 ELSE amount END) as total_income 
             FROM income 
@@ -99,7 +154,7 @@ def show_dashboard():
         result = cur.fetchone()
         total_income = float(result['total_income'] if result['total_income'] is not None else 0)
 
-        # Calculate total expenses
+        # Calculate total expenses for the current user
         cur.execute("""
             SELECT SUM(CASE WHEN amount IS NULL THEN 0 ELSE amount END) as total_expenses 
             FROM expenses 
@@ -119,7 +174,7 @@ def show_dashboard():
     with col2:
         st.subheader("Expense Breakdown")
 
-        # Get expense categories
+        # Get expense categories for the current user
         cur.execute("""
             SELECT c.name as category, COALESCE(SUM(e.amount), 0) as amount
             FROM categories c
