@@ -8,12 +8,9 @@ def user_management_page():
     # Ensure only admin can access this page
     user = require_admin()
     if not user:
-        st.stop()  # Stop execution if user is not logged in or not admin
+        st.stop()  # Stop execution if user is not admin
 
     st.title("User Management")
-
-    # Add authentication controls
-    add_auth_controls()
 
     # Get all users
     conn = get_db_connection()
@@ -36,28 +33,26 @@ def user_management_page():
                 with col1:
                     st.write(f"Created: {created_at.strftime('%Y-%m-%d')}")
                     st.write(f"Role: {'Administrator' if is_admin else 'User'}")
-                    st.write("---")
 
-                    # Password update section (without nesting expanders)
+                    # Password update form
                     st.subheader("Update Password")
-                    with st.form(key=f"update_password_form_{user_id}"):
-                        new_password = st.text_input("New Password", type="password")
-                        confirm_password = st.text_input("Confirm Password", type="password")
+                    new_password = st.text_input("New Password", type="password", key=f"new_pass_{user_id}")
+                    confirm_password = st.text_input("Confirm Password", type="password", key=f"confirm_pass_{user_id}")
 
-                        if st.form_submit_button("Update Password"):
-                            if new_password != confirm_password:
-                                st.error("Passwords do not match")
-                            else:
-                                try:
-                                    password_hash = User.hash_password(new_password)
-                                    cur.execute(
-                                        "UPDATE users SET password_hash = %s WHERE id = %s",
-                                        (password_hash, user_id)
-                                    )
-                                    conn.commit()
-                                    st.success("Password updated successfully!")
-                                except Exception as e:
-                                    st.error(f"Error updating password: {str(e)}")
+                    if st.button("Update Password", key=f"update_pass_{user_id}"):
+                        if new_password != confirm_password:
+                            st.error("Passwords do not match")
+                        else:
+                            try:
+                                password_hash = User.hash_password(new_password)
+                                cur.execute(
+                                    "UPDATE users SET password_hash = %s WHERE id = %s",
+                                    (password_hash, user_id)
+                                )
+                                conn.commit()
+                                st.success("Password updated successfully!")
+                            except Exception as e:
+                                st.error(f"Error updating password: {str(e)}")
 
                 with col2:
                     if user_id != user.id:  # Prevent admin from deleting themselves
@@ -68,7 +63,7 @@ def user_management_page():
                                         'payment_sources', 'financial_goals']
                                 for table in tables:
                                     cur.execute(f"DELETE FROM {table} WHERE user_id = %s", 
-                                              (user_id,))
+                                            (user_id,))
 
                                 # Then delete the user
                                 cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
@@ -78,7 +73,6 @@ def user_management_page():
                             except Exception as e:
                                 st.error(f"Error deleting user: {str(e)}")
 
-                        # Add button to toggle admin status
                         if st.button(
                             "Remove Admin" if is_admin else "Make Admin",
                             key=f"admin_{user_id}"

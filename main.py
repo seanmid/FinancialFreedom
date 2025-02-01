@@ -6,10 +6,7 @@ from utils import calculate_monthly_savings, generate_spending_chart
 from psycopg2.extras import RealDictCursor
 from auth import init_auth, login_user, register_user, logout_user, require_auth
 
-# Initialize the database
-init_db()
-
-# Page configuration
+# Page configuration - MUST be first Streamlit command
 st.set_page_config(
     page_title="Budget Tracker",
     page_icon="💰",
@@ -17,8 +14,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize authentication
+# Initialize the database and authentication
+init_db()
 init_auth()
+
+# Hide all pages when user is not logged in
+if 'user' not in st.session_state or not st.session_state.user:
+    import streamlit.components.v1 as components
+    components.html(
+        """
+        <style>
+        #MainMenu {visibility: hidden;}
+        .stDeployButton {display:none;}
+        section[data-testid="stSidebar"] {display: none;}
+        </style>
+        """,
+        height=0
+    )
 
 def show_login_page():
     st.title("Welcome to Budget Tracker")
@@ -58,6 +70,8 @@ def show_dashboard():
 
     # Add navigation menu
     st.sidebar.title("Navigation")
+
+    # Updated menu items with proper formatting
     pages = {
         "Dashboard": "main",
         "Income & Expenses": "income_expenses",
@@ -71,8 +85,8 @@ def show_dashboard():
     if user.is_admin:
         pages["User Management"] = "user_management"
 
-    # Add logout button with a unique key
-    if st.sidebar.button("Logout", key="main_logout"):
+    # Add logout button
+    if st.sidebar.button("Logout", key="unique_logout_button"):
         logout_user()
         st.rerun()
 
@@ -85,29 +99,29 @@ def show_dashboard():
     with col1:
         st.subheader("Quick Summary")
 
-        # Get current month's data using direct PostgreSQL connection
+        # Get current month's data
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
         # Calculate total income
         cur.execute("""
-            SELECT SUM(CASE WHEN amount IS NULL THEN 0 ELSE amount END) as total_income 
+            SELECT COALESCE(SUM(amount), 0) as total_income 
             FROM income 
             WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', CURRENT_DATE)
             AND user_id = %s
         """, (user.id,))
         result = cur.fetchone()
-        total_income = float(result['total_income'] if result['total_income'] is not None else 0)
+        total_income = float(result['total_income'])
 
         # Calculate total expenses
         cur.execute("""
-            SELECT SUM(CASE WHEN amount IS NULL THEN 0 ELSE amount END) as total_expenses 
+            SELECT COALESCE(SUM(amount), 0) as total_expenses 
             FROM expenses 
             WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', CURRENT_DATE)
             AND user_id = %s
         """, (user.id,))
         result = cur.fetchone()
-        total_expenses = float(result['total_expenses'] if result['total_expenses'] is not None else 0)
+        total_expenses = float(result['total_expenses'])
 
         # Display metrics
         st.metric("Monthly Income", f"${total_income:,.2f}")

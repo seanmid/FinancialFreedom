@@ -5,7 +5,7 @@ import pandas as pd
 from database import get_db_connection
 from utils import export_to_csv
 from datetime import datetime, timedelta
-from auth import require_auth, logout_user
+from auth import require_auth
 from components import add_auth_controls
 
 def analytics_page():
@@ -16,9 +16,6 @@ def analytics_page():
 
     st.title("Financial Analytics")
 
-    # Add authentication controls
-    add_auth_controls()
-
     # Date range selection
     col1, col2 = st.columns(2)
     with col1:
@@ -26,7 +23,6 @@ def analytics_page():
     with col2:
         end_date = st.date_input("End Date", value=datetime.now())
 
-    # Remove duplicate logout button
     # Get data from database
     conn = get_db_connection()
     cur = conn.cursor()
