@@ -33,7 +33,7 @@ if 'user' not in st.session_state or not st.session_state.user:
     )
 
 def show_login_page():
-    st.title("Welcome to Budget Tracker")
+    st.title("Welcome to Financial Freedom")
 
     tab1, tab2 = st.tabs(["Login", "Register"])
 
